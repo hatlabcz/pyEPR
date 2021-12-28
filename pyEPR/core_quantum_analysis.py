@@ -563,7 +563,7 @@ class QuantumAnalysis(object):
         Return the key matricies used in the EPR method for analytic calcualtions.
 
         All as matrices
-            :PJ: Participatuion matrix, p_mj
+            :PJ: Participation matrix, p_mj
             :SJ: Sign matrix, s_mj
             :Om: Omega_mm matrix (in GHz) (\hbar = 1) Not radians.
             :EJ: E_jj matrix of Josephson energies (in same units as hbar omega matrix)
@@ -657,6 +657,13 @@ class QuantumAnalysis(object):
         freqs_hfss = self.freqs_hfss[variation].values[(modes)]
         Ljs = self.Ljs[variation].values
 
+        PJ_0 = PJ
+        SJ_0 = SJ
+        EJ_0 = EJ
+        Om_0 = Om
+        PHI_zpf_0 = PHI_zpf
+        PJ_cap_0 = PJ_cap
+
         # reduce matrices to only include certain modes/junctions
         if junctions is not None:
             Ljs = Ljs[junctions, ]
@@ -667,12 +674,12 @@ class QuantumAnalysis(object):
             PJ_cap = PJ_cap[:, junctions]
 
         if modes is not None:
-            freqs_hfss = freqs_hfss[range(len(self.modes[variation])), ]
-            PJ = PJ[range(len(modes)), :]
-            SJ = SJ[range(len(modes)), :]
-            Om = Om[range(len(modes)), :][:, range(len(modes))]
-            PHI_zpf = PHI_zpf[range(len(modes)), :]
-            PJ_cap = PJ_cap[:, junctions]
+            # freqs_hfss = freqs_hfss[range(len(self.modes[variation])), ] # This line should be removed since we've already picked the mode frequencies in line 657
+            PJ = PJ[modes, :] # here (and below) the matrix index should just be [modes, :], since we want to analyze the modes specified in the argument, not the first len(modes) number of modes.
+            SJ = SJ[modes, :]
+            Om = Om[modes, :][:, modes]
+            PHI_zpf = PHI_zpf[modes, :]
+            PJ_cap = PJ_cap[modes, :]
 
         # Analytic 4-th order
         CHI_O1 = 0.25 * Om @ PJ @ inv(EJ) @ PJ.T @ Om * 1000.  # MHz
@@ -698,6 +705,15 @@ class QuantumAnalysis(object):
         result['chi_ND'] = pd.DataFrame(CHI_ND)   # why dataframe?
         result['ZPF'] = PHI_zpf
         result['Pm_normed'] = PJ
+        
+        result['PJ_0'] = PJ_0
+        result['SJ_0'] = SJ_0
+        result['EJ_0'] = EJ_0
+        result['PHI_zpf_0'] = PHI_zpf_0
+        result['Om_0'] = Om_0
+        result['PJ_cap_0'] = PJ_cap_0
+
+        
         try:
             result['Pm_raw'] = self.PM[variation][self.PM[variation].columns[0]][modes]#TODO change the columns to junctions
         except:
