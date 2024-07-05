@@ -41,22 +41,22 @@ from . import logger
 try:
     import pythoncom
 except (ImportError, ModuleNotFoundError):
-    pass #raise NameError ("pythoncom module not installed. Please install.")
+    pass  # raise NameError ("pythoncom module not installed. Please install.")
 
 try:
     # TODO: Replace `win32com` with Linux compatible package.
     # See Ansys python files in IronPython internal.
     from win32com.client import Dispatch, CDispatch
 except (ImportError, ModuleNotFoundError):
-    pass #raise NameError ("win32com module not installed. Please install.")
+    pass  # raise NameError ("win32com module not installed. Please install.")
 
 try:
     from pint import UnitRegistry
+
     ureg = UnitRegistry()
     Q = ureg.Quantity
 except (ImportError, ModuleNotFoundError):
-    pass # raise NameError ("Pint module not installed. Please install.")
-
+    pass  # raise NameError ("Pint module not installed. Please install.")
 
 ##############################################################################
 ###
@@ -491,7 +491,7 @@ class HfssProject(COMWrapper):
         super(HfssProject, self).__init__()
         self.parent = desktop
         self._project = project
-        #self.name = project.GetName()
+        # self.name = project.GetName()
         self._ansys_version = self.parent.version
 
     def close(self):
@@ -666,7 +666,8 @@ class HfssDesign(COMWrapper):
         self._modeler.ExportModelImageToFile(
             str(path),
             0,
-            0,  # can be 0 For the default, use 0, 0. For higher resolution, set desired <width> and <height>, for example for 8k export as: 7680, 4320.
+            0,
+            # can be 0 For the default, use 0, 0. For higher resolution, set desired <width> and <height>, for example for 8k export as: 7680, 4320.
             [
                 "NAME:SaveImageParams", "ShowAxis:=", "True", "ShowGrid:=",
                 "True", "ShowRuler:=", "True", "ShowRegion:=", "Default",
@@ -713,7 +714,7 @@ class HfssDesign(COMWrapper):
 
         if self.solution_type == "Eigenmode":
             return HfssEMSetup(self, name)
-        elif self.solution_type == "DrivenModal":
+        elif self.solution_type in ["DrivenModal", "HFSS Modal Network"]:  # new name for DrivenModal in 2022
             return HfssDMSetup(self, name)
         elif self.solution_type == "DrivenTerminal":
             return HfssDTSetup(self, name)
@@ -905,7 +906,7 @@ class HfssDesign(COMWrapper):
         content = ["NAME:ChangedProps"]
         local, project = self._variation_string_to_variable_list(
             variation_string)
-        #print('\nlocal=', local, '\nproject=', project)
+        # print('\nlocal=', local, '\nproject=', project)
 
         if len(project) > 0:
             self._design.ChangeProperty([
@@ -959,7 +960,7 @@ class HfssDesign(COMWrapper):
             Does not return the project (global) variables, which start with $. """
         return [
             VariableString(s) for s in self._design.GetVariables() +
-            self._design.GetPostProcessingVariables()
+                                       self._design.GetPostProcessingVariables()
         ]
 
     def get_variables(self):
@@ -1041,7 +1042,7 @@ class HfssSetup(HfssPropertyObject):
         self._solutions = design._solutions
         self.name = setup
         self.solution_name = setup + " : LastAdaptive"
-        #self.solution_name_pass = setup + " : AdaptivePass"
+        # self.solution_name_pass = setup + " : AdaptivePass"
         self.prop_server = "AnalysisSetup:" + setup
         self.expression_cache_items = []
         self._ansys_version = self.parent._ansys_version
@@ -1107,12 +1108,12 @@ class HfssSetup(HfssPropertyObject):
         name = increment_name(name, self.get_sweep_names())
         params = [
             "NAME:" + name,
-            "IsEnabled:=",     True,
-            "Type:=",          type,
-            "SaveFields:=",    save_fields,
+            "IsEnabled:=", True,
+            "Type:=", type,
+            "SaveFields:=", save_fields,
             "SaveRadFields:=", False,
             # "GenerateFieldsForAllFreqs:="
-            "ExtrapToDC:=",    False,
+            "ExtrapToDC:=", False,
         ]
 
         # not sure when exactly this changed between 2016 and 2019
@@ -1156,31 +1157,30 @@ class HfssSetup(HfssPropertyObject):
     def delete_sweep(self, name):
         self._setup_module.DeleteSweep(self.name, name)
 
+    #    def add_fields_convergence_expr(self, expr, pct_delta, phase=0):
+    #        """note: because of hfss idiocy, you must call "commit_convergence_exprs"
+    #         after adding all exprs"""
+    #        assert isinstance(expr, NamedCalcObject)
+    #        self.expression_cache_items.append(
+    #            ["NAME:CacheItem",
+    #             "Title:=", expr.name+"_conv",
+    #             "Expression:=", expr.name,
+    #             "Intrinsics:=", "Phase='{}deg'".format(phase),
+    #             "IsConvergence:=", True,
+    #             "UseRelativeConvergence:=", 1,
+    #             "MaxConvergenceDelta:=", pct_delta,
+    #             "MaxConvergeValue:=", "0.05",
+    #             "ReportType:=", "Fields",
+    #             ["NAME:ExpressionContext"]])
 
-#    def add_fields_convergence_expr(self, expr, pct_delta, phase=0):
-#        """note: because of hfss idiocy, you must call "commit_convergence_exprs"
-#         after adding all exprs"""
-#        assert isinstance(expr, NamedCalcObject)
-#        self.expression_cache_items.append(
-#            ["NAME:CacheItem",
-#             "Title:=", expr.name+"_conv",
-#             "Expression:=", expr.name,
-#             "Intrinsics:=", "Phase='{}deg'".format(phase),
-#             "IsConvergence:=", True,
-#             "UseRelativeConvergence:=", 1,
-#             "MaxConvergenceDelta:=", pct_delta,
-#             "MaxConvergeValue:=", "0.05",
-#             "ReportType:=", "Fields",
-#             ["NAME:ExpressionContext"]])
-
-#    def commit_convergence_exprs(self):
-#        """note: this will eliminate any convergence expressions not added
-#           through this interface"""
-#        args = [
-#            "NAME:"+self.name,
-#            ["NAME:ExpressionCache", self.expression_cache_items]
-#        ]
-#        self._setup_module.EditSetup(self.name, args)
+    #    def commit_convergence_exprs(self):
+    #        """note: this will eliminate any convergence expressions not added
+    #           through this interface"""
+    #        args = [
+    #            "NAME:"+self.name,
+    #            ["NAME:ExpressionCache", self.expression_cache_items]
+    #        ]
+    #        self._setup_module.EditSetup(self.name, args)
 
     def get_sweep_names(self):
         return self._setup_module.GetSweeps(self.name)
@@ -1353,6 +1353,7 @@ class HfssDMSetup(HfssSetup):
     def get_solutions(self):
         return HfssDMDesignSolutions(self, self.parent._solutions)
 
+
 class HfssDTSetup(HfssDMSetup):
 
     def get_solutions(self):
@@ -1432,10 +1433,10 @@ class AnsysQ3DSetup(HfssSetup):
         # <IndUnit>, <CapUnit>, <CondUnit>, <Frequency>, <MatrixType>, <PassNumber>,
         # <ACPlusDCResistance>
         logger.info(f'Exporting matrix data to ({path}, {soln_type}, {variation}, '
-                                             f'{self.name}:{solution_kind}, '
-                                             '"Original", "ohm", "nH", "fF", '
-                                             f'"mSie", {frequency}, {MatrixType}, '
-                                             f'{pass_number}, {ACPlusDCResistance}')
+                    f'{self.name}:{solution_kind}, '
+                    '"Original", "ohm", "nH", "fF", '
+                    f'"mSie", {frequency}, {MatrixType}, '
+                    f'{pass_number}, {ACPlusDCResistance}')
         self.parent._design.ExportMatrixData(path, soln_type, variation,
                                              f'{self.name}:{solution_kind}',
                                              "Original", "ohm", "nH", "fF",
@@ -1517,7 +1518,7 @@ class AnsysQ3DSetup(HfssSetup):
             if len(var) < 1:  # didnt find
                 # May not be present if there are no design variations to begin
                 # with and no variables in the design.
-                pass  #logger.error(f'Failed to parse Q3D matrix Design Variation:\nFile:{path}\nText:{text}')
+                pass  # logger.error(f'Failed to parse Q3D matrix Design Variation:\nFile:{path}\nText:{text}')
 
                 var = ['']
         design_variation = var[0]
@@ -1545,7 +1546,7 @@ class AnsysQ3DSetup(HfssSetup):
         q = ureg.parse_expression(Cunits).to(user_units)
         df_cmat = df_cmat * q.magnitude  # scale to user units
 
-        #print("Imported capacitance matrix with UNITS: [%s] now converted to USER UNITS:[%s] from file:\n\t%s"%(Cunits, user_units, path))
+        # print("Imported capacitance matrix with UNITS: [%s] now converted to USER UNITS:[%s] from file:\n\t%s"%(Cunits, user_units, path))
 
         return df_cmat, user_units, (df_cond, units_cond), design_variation
 
@@ -1597,7 +1598,7 @@ class HfssEMDesignSolutions(HfssDesignSolutions):
         Returns the eigenmode data of freq and kappa/2p
         '''
         fn = tempfile.mktemp()
-        #print(self.parent.solution_name, lv, fn)
+        # print(self.parent.solution_name, lv, fn)
         self._solutions.ExportEigenmodes(self.parent.solution_name, lv, fn)
         data = np.genfromtxt(fn, dtype='str')
         # Update to Py 3:
@@ -1698,9 +1699,9 @@ class HfssEMDesignSolutions(HfssDesignSolutions):
             self._solutions.EditSources(
                 "EigenStoredEnergy", ["NAME:SourceNames", "EigenMode"],
                 ["NAME:Modes", n_modes], ["NAME:Magnitudes"] +
-                [1 if i + 1 == n else 0
-                 for i in range(n_modes)], ["NAME:Phases"] +
-                [phase if i + 1 == n else 0 for i in range(n_modes)],
+                                         [1 if i + 1 == n else 0
+                                          for i in range(n_modes)], ["NAME:Phases"] +
+                                         [phase if i + 1 == n else 0 for i in range(n_modes)],
                 ["NAME:Terminated"], ["NAME:Impedances"])
 
     def has_fields(self, variation_string=None):
@@ -1753,8 +1754,10 @@ class HfssEMDesignSolutions(HfssDesignSolutions):
 class HfssDMDesignSolutions(HfssDesignSolutions):
     pass
 
+
 class HfssDTDesignSolutions(HfssDesignSolutions):
     pass
+
 
 class HfssQ3DDesignSolutions(HfssDesignSolutions):
     pass
@@ -1813,9 +1816,9 @@ class HfssFrequencySweep(COMWrapper):
                 # in place of 'Re' and 'Im
                 for i, j in list:
                     real_idx = colnames.index("%s[%d,%d]_Re" %
-                                            (data_type, i, j))
+                                              (data_type, i, j))
                     imag_idx = colnames.index("%s[%d,%d]_Im" %
-                                            (data_type, i, j))
+                                              (data_type, i, j))
                     c_arr = array[:, real_idx] + 1j * array[:, imag_idx]
                     ret[formats.index("%s%d%d" % (data_type, i, j))] = c_arr
 
@@ -1875,6 +1878,7 @@ class Optimetrics(COMWrapper):
 
     Note that running optimetrics requires the license for Optimetrics by Ansys.
     """
+
     def __init__(self, design):
         super(Optimetrics, self).__init__()
 
@@ -1916,7 +1920,7 @@ class Optimetrics(COMWrapper):
         """
         Inserts a new parametric setup of one variable. Either with sweep
         definition or from file.
-        
+
         *Synchronized* sweeps (more than one variable changing at once)
         can be implemented by giving a list of variables to ``variable``
         and corresponding lists to ``swp_params`` and ``swp_type``.
@@ -1952,7 +1956,7 @@ class Optimetrics(COMWrapper):
 
         For swp_type='linear_step' swp_params is start, stop, step:
             swp_params = ("12.8nH", "13.6nH", "0.2nH")
-        
+
         All other types swp_params is start, stop, count:
             swp_params = ("12.8nH", "13.6nH", 4)
             The definition of count varies amongst the available types.
@@ -2049,20 +2053,20 @@ class Optimetrics(COMWrapper):
             filename = swp_params
 
             self._optimetrics.ImportSetup("OptiParametric",
-                [
-                f"NAME:{name}",
-                filename,
-                ])
+                                          [
+                                              f"NAME:{name}",
+                                              filename,
+                                          ])
             self._optimetrics.EditSetup(f"{name}",
-                [
-                    f"NAME:{name}",
-            		[
-            			"NAME:ProdOptiSetupDataV2",
-            			"SaveFields:="		, save_fields,
-            			"CopyMesh:="		, copy_mesh,
-            			"SolveWithCopiedMeshOnly:=", solve_with_copied_mesh_only,
-            		],
-            ])
+                                        [
+                                            f"NAME:{name}",
+                                            [
+                                                "NAME:ProdOptiSetupDataV2",
+                                                "SaveFields:="	, save_fields,
+                                                "CopyMesh:="		, copy_mesh,
+                                                "SolveWithCopiedMeshOnly:=", solve_with_copied_mesh_only,
+                                            ],
+                                        ])
         else:
             raise NotImplementedError()
 
@@ -2596,8 +2600,8 @@ class HfssModeler(COMWrapper):
             to_fillet = [int(vertices[vertex_index])]
 
 
-#        print(vertices)
-#        print(radius)
+        #        print(vertices)
+        #        print(radius)
         self._modeler.Fillet(["NAME:Selections", "Selections:=", obj], [
             "NAME:Parameters",
             [
@@ -2786,13 +2790,13 @@ class Polyline(ModelEntity):
             # TODO: points = collection of points
 
 
-#        axis = find_orth_axis()
+    #        axis = find_orth_axis()
 
-# TODO: find the plane of the polyline for now, assume Z
-#    def find_orth_axis():
-#        X, Y, Z = (True, True, True)
-#        for point in points:
-#            X =
+    # TODO: find the plane of the polyline for now, assume Z
+    #    def find_orth_axis():
+    #        X, Y, Z = (True, True, True)
+    #        for point in points:
+    #            X =
 
     def unite(self, list_other):
         union = self.modeler.unite(self + list_other)
@@ -2874,13 +2878,13 @@ class OpenPolyline(ModelEntity):  # Assume closed polyline
             pass
 
 
-#        axis = find_orth_axis()
+    #        axis = find_orth_axis()
 
-# TODO: find the plane of the polyline for now, assume Z
-#    def find_orth_axis():
-#        X, Y, Z = (True, True, True)
-#        for point in points:
-#            X =
+    # TODO: find the plane of the polyline for now, assume Z
+    #    def find_orth_axis():
+    #        X, Y, Z = (True, True, True)
+    #        for point in points:
+    #            X =
 
     def vertices(self):
         return self.modeler.get_vertex_ids(self)
@@ -2901,7 +2905,7 @@ class OpenPolyline(ModelEntity):  # Assume closed polyline
                 int,
                 np.delete(list_vertices,
                           np.array(do_not_fillet, dtype=int) - 1)))
-        #print(list_vertices, type(list_vertices[0]))
+        # print(list_vertices, type(list_vertices[0]))
         if len(list_vertices) != 0:
             self.modeler._fillets(radius, list_vertices, self)
         else:
@@ -3084,7 +3088,7 @@ class CalcObject(COMWrapper):
         ''' return the part normal to surface.
             Complex Vector. '''
         stack = self.stack + [("EnterSurf", name),
-                                ("CalcOp",    "Normal")]
+                              ("CalcOp",    "Normal")]
         stack.append(("CalcOp", "Dot"))
         stack.append(("EnterSurf", name))
         stack.append(("CalcOp",    "Normal"))
@@ -3095,7 +3099,7 @@ class CalcObject(COMWrapper):
         ''' return the part tangent to surface.
             Complex Vector. '''
         stack = self.stack + [("EnterSurf", name),
-                                ("CalcOp",    "Normal")]
+                              ("CalcOp",    "Normal")]
         stack.append(("CalcOp", "Dot"))
         stack.append(("EnterSurf", name))
         stack.append(("CalcOp",    "Normal"))
@@ -3157,7 +3161,7 @@ class CalcObject(COMWrapper):
             print('---------------------')
             print('writing to stack: OK')
             print('-----------------')
-        #self.calc_module.set_mode(n_mode, 0)
+        # self.calc_module.set_mode(n_mode, 0)
         setup_name = self.setup.solution_name
 
         if lv is not None:
@@ -3264,7 +3268,7 @@ def load_ansys_project(proj_name: str,
 
     desktop = app.get_app_desktop()
     logger.info(f"\tOpened Ansys Desktop v{desktop.get_version()}")
-    #logger.debug(f"\tOpen projects: {desktop.get_project_names()}")
+    # logger.debug(f"\tOpen projects: {desktop.get_project_names()}")
 
     if proj_name is not None:
         if proj_name in desktop.get_project_names():

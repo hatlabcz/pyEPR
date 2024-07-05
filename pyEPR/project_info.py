@@ -335,8 +335,9 @@ class ProjectInfo(object):
                         logger.warning('\tCreating Q3D default setup.')
                         setup = self.design.create_q3d_setup()
                     self.setup_name = setup.name
-                else:
+                elif self.setup_name is None:
                     self.setup_name = setup_names[0]
+                    logger.warning(f"no setup name was specified, will use the first setup '{self.setup_name}'")
 
                 # get the actual setup if there is one
                 self.get_setup(self.setup_name)
@@ -363,7 +364,14 @@ class ProjectInfo(object):
         if not self.project:
             logger.info('\tConnection to Ansys NOT established.  \n')
         if self.project:
-            self.connect_design()
+            try:
+                self.connect_design()
+            except Exception as e:
+                print(e)
+                self.project.release()
+                self.desktop.release()
+                self.app.release()
+                ansys.release()
         self.connect_setup()
 
         # Finalize
