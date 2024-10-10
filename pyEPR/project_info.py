@@ -223,8 +223,24 @@ class ProjectInfo(object):
         self.setup = None
 
         if do_connect:
-            self.connect()
-            self.dissipative['pinfo'] = self
+            try:
+                self.connect()
+                self.dissipative['pinfo'] = self
+            except Exception as e:
+                print(e)
+                try:
+                    self.project.release()
+                except Exception as e:
+                    print(e)
+                try:
+                    self.desktop.release()
+                except Exception as e:
+                    print(e)
+                try:
+                    self.app.release()
+                except Exception as e:
+                    print(e)
+                ansys.release()
 
     _Forbidden = [
         'app', 'design', 'desktop', 'project', 'dissipative', 'setup',
