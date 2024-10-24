@@ -614,6 +614,7 @@ class QuantumAnalysis(object):
                 None defaults to analysing all junctions
             modes: list or slice of modes to include in the analysis.
                 None defaults to analysing all modes
+                These are indexed in terms of the epr analyzed modes, not the original modes from HFSS solution
 
         Returns:
             dict: Dictionary containing at least the following:
@@ -634,10 +635,13 @@ class QuantumAnalysis(object):
         if modes is None:
             modes = list(range(self.n_modes))
         
-        tmp_n_modes = self.n_modes
-        tmp_modes = self.modes[variation]
-        self.n_modes = len(modes)
-        self.modes[variation] = modes
+        # tmp_n_modes = self.n_modes
+        # tmp_modes = self.modes[variation]
+        # self.n_modes = len(modes)
+        # self.modes[variation] = modes
+
+        # pick modes from the epr analyzed modes for this analysis
+        analyze_modes = np.array(self.modes[variation])[modes]
 
         if (fock_trunc is None) or (cos_trunc is None):
             fock_trunc = cos_trunc = None
@@ -650,8 +654,8 @@ class QuantumAnalysis(object):
 
         # Get matrices
         PJ, SJ, Om, EJ, PHI_zpf, PJ_cap, n_zpf = self.get_epr_base_matrices(
-            variation)
-        freqs_hfss = self.freqs_hfss[variation].values[(modes)]
+            variation)  # already reduced to the dimension of the epr analyzed modes
+        freqs_hfss = self.freqs_hfss[variation].values[analyze_modes]
         Ljs = self.Ljs[variation].values
 
         PJ_0 = PJ
@@ -696,7 +700,7 @@ class QuantumAnalysis(object):
             f1_ND, CHI_ND = None, None
 
         result = OrderedDict()
-        result['f_0'] = self.freqs_hfss[variation][modes] * 1E3  # MHz - obtained directly from HFSS
+        result['f_0'] = self.freqs_hfss[variation][analyze_modes] * 1E3  # MHz - obtained directly from HFSS
         result['f_1'] = pd.Series(f1s)*1E3     # MHz
         result['f_ND'] = pd.Series(f1_ND)*1E-6  # MHz
         result['chi_O1'] = pd.DataFrame(CHI_O1)
@@ -713,27 +717,27 @@ class QuantumAnalysis(object):
 
         
         try:
-            result['Pm_raw'] = self.PM[variation][self.PM[variation].columns[0]][modes]#TODO change the columns to junctions
+            result['Pm_raw'] = self.PM[variation][self.PM[variation].columns[0]][analyze_modes]#TODO change the columns to junctions
         except:
              result['Pm_raw'] = self.PM[variation]
         _temp = self._get_participation_normalized(
             variation, _renorm_pj=self._renorm_pj, print_=print_result)
-        result['_Pm_norm'] = _temp['Pm_norm'][modes]
-        result['_Pm_cap_norm'] = _temp['Pm_cap_norm'][modes]
+        result['_Pm_norm'] = _temp['Pm_norm'][analyze_modes]
+        result['_Pm_cap_norm'] = _temp['Pm_cap_norm'][analyze_modes]
 
         # just propagate
         result['hfss_variables'] = self._hfss_variables[variation]
         result['Ljs'] = self.Ljs[variation]
         result['Cjs'] = self.Cjs[variation]
         try:
-            result['Q_coupling'] = self.Qm_coupling[variation][self.Qm_coupling[variation].columns[junctions]][modes]#TODO change the columns to junctions
+            result['Q_coupling'] = self.Qm_coupling[variation][self.Qm_coupling[variation].columns[junctions]][analyze_modes]#TODO change the columns to junctions
         except:
             result['Q_coupling'] = self.Qm_coupling[variation]
         
         try:
-            result['Qs'] = self.Qs[variation][self.PM[variation].columns[junctions]][modes] #TODO change the columns to junctions
+            result['Qs'] = self.Qs[variation][self.PM[variation].columns[junctions]][analyze_modes] #TODO change the columns to junctions
         except:
-            result['Qs'] = self.Qs[variation][modes]
+            result['Qs'] = self.Qs[variation][analyze_modes]
 
         result['sol'] = self.sols[variation]
 
@@ -747,8 +751,8 @@ class QuantumAnalysis(object):
             self.print_variation(variation)
             self.print_result(result)
     
-        self.n_modes = tmp_n_modes # TODO is this smart should consider defining the modes of interest in the initialisation of the quantum object
-        self.modes[variation]=tmp_modes 
+        # self.n_modes = tmp_n_modes # TODO is this smart should consider defining the modes of interest in the initialisation of the quantum object
+        # self.modes[variation]=tmp_modes
         return result
 
     def full_report_variations(self, var_list: list=None):
